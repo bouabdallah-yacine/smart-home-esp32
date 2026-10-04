@@ -1,5 +1,7 @@
 # 🏠 Maison connectée : automatismes locaux, alarme et sécurité gaz (ESP32 + FreeRTOS)
 
+[![Tests](https://github.com/bouabdellah-yacine/smart-home-esp32/actions/workflows/ci.yml/badge.svg)](https://github.com/bouabdellah-yacine/smart-home-esp32/actions/workflows/ci.yml)
+
 Une maison qui réfléchit **toute seule, sans Internet** : elle allume la lumière quand quelqu'un entre
 dans le noir, chauffe juste ce qu'il faut, ferme les volets au soleil, surveille le gaz et protège la
 maison avec une alarme à code. On la pilote depuis une **page web servie directement par l'ESP32**,
