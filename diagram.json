@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "author": "Maison connectee",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "board-ssd1306", "id": "oled1", "top": -100, "left": 200, "attrs": { "i2cAddress": "0x3c" } },
+    { "type": "wokwi-dht22", "id": "dht1", "top": -140, "left": -110, "attrs": { "temperature": "19", "humidity": "50" } },
+    { "type": "wokwi-pir-motion-sensor", "id": "pir1", "top": -150, "left": 20, "attrs": {} },
+    { "type": "wokwi-photoresistor-sensor", "id": "ldr1", "top": 260, "left": -260, "attrs": { "lux": "100" } },
+    { "type": "wokwi-slide-potentiometer", "id": "gas1", "top": 340, "left": -260, "attrs": { "travelLength": "30", "value": "0" } },
+    { "type": "wokwi-slide-switch", "id": "door1", "top": 190, "left": -150, "attrs": { "value": "0" } },
+    { "type": "wokwi-membrane-keypad", "id": "keypad1", "top": -60, "left": 420, "attrs": {} },
+    { "type": "wokwi-led", "id": "led_lamp", "top": 250, "left": 40, "attrs": { "color": "white", "label": "Lampe" } },
+    { "type": "wokwi-led", "id": "led_fan", "top": 250, "left": 100, "attrs": { "color": "blue", "label": "Ventil" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 320, "left": 30, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 320, "left": 90, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-relay-module", "id": "relay1", "top": 240, "left": 180, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo1", "top": 120, "left": 220, "attrs": {} },
+    { "type": "wokwi-buzzer", "id": "bz1", "top": 360, "left": 160, "attrs": { "volume": "0.1" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "oled1:VCC", "esp:3V3", "red", [] ], [ "oled1:GND", "esp:GND.2", "black", [] ],
+    [ "oled1:SDA", "esp:21", "blue", [] ], [ "oled1:SCL", "esp:22", "orange", [] ],
+    [ "dht1:VCC", "esp:3V3", "red", [] ], [ "dht1:GND", "esp:GND.1", "black", [] ], [ "dht1:SDA", "esp:15", "green", [] ],
+    [ "pir1:VCC", "esp:3V3", "red", [] ], [ "pir1:GND", "esp:GND.1", "black", [] ], [ "pir1:OUT", "esp:35", "yellow", [] ],
+    [ "ldr1:VCC", "esp:3V3", "red", [] ], [ "ldr1:GND", "esp:GND.1", "black", [] ], [ "ldr1:AO", "esp:34", "violet", [] ],
+    [ "gas1:VCC", "esp:3V3", "red", [] ], [ "gas1:GND", "esp:GND.1", "black", [] ], [ "gas1:SIG", "esp:VN", "purple", [] ],
+    [ "door1:1", "esp:GND.1", "black", [] ], [ "door1:3", "esp:3V3", "red", [] ], [ "door1:2", "esp:VP", "gray", [] ],
+    [ "keypad1:R1", "esp:13", "green", [] ], [ "keypad1:R2", "esp:12", "green", [] ],
+    [ "keypad1:R3", "esp:14", "green", [] ], [ "keypad1:R4", "esp:27", "green", [] ],
+    [ "keypad1:C1", "esp:26", "blue", [] ], [ "keypad1:C2", "esp:25", "blue", [] ],
+    [ "keypad1:C3", "esp:33", "blue", [] ], [ "keypad1:C4", "esp:32", "blue", [] ],
+    [ "led_lamp:A", "esp:2", "white", [] ], [ "led_lamp:C", "r1:1", "black", [] ], [ "r1:2", "esp:GND.1", "black", [] ],
+    [ "led_fan:A", "esp:18", "blue", [] ], [ "led_fan:C", "r2:1", "black", [] ], [ "r2:2", "esp:GND.1", "black", [] ],
+    [ "relay1:VCC", "esp:5V", "red", [] ], [ "relay1:GND", "esp:GND.2", "black", [] ], [ "relay1:IN", "esp:4", "orange", [] ],
+    [ "servo1:V+", "esp:5V", "red", [] ], [ "servo1:GND", "esp:GND.2", "black", [] ], [ "servo1:PWM", "esp:19", "orange", [] ],
+    [ "bz1:2", "esp:23", "purple", [] ], [ "bz1:1", "esp:GND.2", "black", [] ]
+  ],
+  "dependencies": {}
+}
