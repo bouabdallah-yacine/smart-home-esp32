@@ -5,7 +5,10 @@ static const char WEB_PAGE[] = R"HTML(<!doctype html>
 <title>Maison connectée</title>
 <style>
 :root{--bg:#f3f1ec;--card:#fff;--ink:#1f2a2e;--mut:#6b7679;--line:#e2ded6;--acc:#2f6f63;--warn:#c27a00;--crit:#c0392b;--on:#2f6f63}
-@media(prefers-color-scheme:dark){:root{--bg:#141a1c;--card:#1d2528;--ink:#e6ecea;--mut:#93a09e;--line:#2b3538;--acc:#5fb8a6;--warn:#f0a531;--crit:#ef6a58;--on:#5fb8a6}}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a1c;--card:#1d2528;--ink:#e6ecea;--mut:#93a09e;--line:#2b3538;--acc:#5fb8a6;--warn:#f0a531;--crit:#ef6a58;--on:#5fb8a6;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141a1c;--card:#1d2528;--ink:#e6ecea;--mut:#93a09e;--line:#2b3538;--acc:#5fb8a6;--warn:#f0a531;--crit:#ef6a58;--on:#5fb8a6;color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}#theme{min-width:42px}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
 main{max-width:860px;margin:0 auto;display:grid;gap:14px}
 h1{font-size:22px;margin:0}header p{margin:2px 0 0;color:var(--mut);font-size:13px}
@@ -23,7 +26,7 @@ input{font:inherit;width:90px;padding:7px;border:1px solid var(--line);border-ra
 #banner{display:none;padding:12px 14px;border-radius:10px;background:var(--crit);color:#fff;font-weight:600}
 ol{margin:0;padding:0;list-style:none;font-size:13px}ol li{padding:4px 0;border-bottom:1px solid var(--line)}ol span{color:var(--mut);font-variant-numeric:tabular-nums;margin-right:8px}
 </style></head><body><main>
-<header><h1>Maison connectée</h1><p>Page servie par l'ESP32 · fonctionne sans Internet</p></header>
+<header><div><h1>Maison connectée</h1><p>Page servie par l'ESP32 · fonctionne sans Internet</p></div><button id="theme" aria-label="Changer de thème">◐</button></header>
 <div id="banner"></div>
 <section class="grid">
  <div class="card"><div class="lab">Température</div><div class="val" id="t">–</div><div class="sub" id="h"></div></div>
@@ -54,6 +57,11 @@ ol{margin:0;padding:0;list-style:none;font-size:13px}ol li{padding:4px 0;border-
 <section class="card"><div class="lab">Journal</div><ol id="log"></ol></section>
 </main><script>
 const $=id=>document.getElementById(id);
+(function(){const r=document.documentElement;let t=null;try{t=localStorage.getItem('theme')}catch(e){}
+ if(t)r.dataset.theme=t;
+ const cur=()=>r.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+ const lab=()=>{$('theme').textContent=cur()=='dark'?'☀':'☾';$('theme').title=cur()=='dark'?'Passer en mode clair':'Passer en mode sombre'};
+ $('theme').onclick=()=>{r.dataset.theme=cur()=='dark'?'light':'dark';try{localStorage.setItem('theme',r.dataset.theme)}catch(e){}lab()};lab()})();
 function pill(id,on,txt,crit){const e=$(id);e.textContent=txt;e.className='pill'+(on?(crit?' crit':' on'):'')}
 async function cmd(c,v){try{await fetch('/api/cmd?c='+c+'&v='+encodeURIComponent(v));}catch(e){}refresh()}
 document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>cmd('mode',b.dataset.m));
