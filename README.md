@@ -60,3 +60,7 @@ Commandes dans le moniteur série : `mode away`, `mode night`, `light on`, `ligh
 ```bash
 gcc -O2 -Wall -Wextra -Isrc -o t test/test_home.c src/home.c && ./t
 ```
+
+## Licence
+
+© 2026 Yacine — tous droits réservés. Code publié pour consultation uniquement (voir [`LICENSE`](LICENSE)).
