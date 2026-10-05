@@ -1,61 +1,61 @@
-# 🏠 Maison connectée : automatismes locaux, alarme et sécurité gaz (ESP32 + FreeRTOS)
+# 🏠 Smart home: local automation, alarm and gas safety (ESP32 + FreeRTOS)
 
 [![Tests](https://github.com/bouabdellah-yacine/smart-home-esp32/actions/workflows/ci.yml/badge.svg)](https://github.com/bouabdellah-yacine/smart-home-esp32/actions/workflows/ci.yml)
 
-Une maison qui réfléchit **toute seule, sans Internet** : elle allume la lumière quand quelqu'un entre
-dans le noir, chauffe juste ce qu'il faut, ferme les volets au soleil, surveille le gaz et protège la
-maison avec une alarme à code. On la pilote depuis une **page web servie directement par l'ESP32**,
-sur PC ou sur téléphone.
+A home that thinks **on its own, without Internet**: it turns the light on when someone walks in
+the dark, heats just as much as needed, closes the blinds in bright sun, monitors gas and protects
+the house with a code-based alarm. It is controlled from a **web page served directly by the ESP32**,
+on a computer or a phone.
 
-> ✅ Simulée sur **Wokwi** (VS Code). Toutes les règles sont dans un module C portable, **24 tests** sur PC.
+> ✅ Simulated on **Wokwi** (VS Code). All rules live in a portable C module, with **24 tests** on PC.
 
-## Les automatismes
+## Automation rules
 
-| Fonction | Règle |
+| Feature | Rule |
 |---|---|
-| 💡 Éclairage | sombre (< 200 lux) + mouvement → 100 % ; extinction 30 s après le dernier mouvement ; mode nuit : veilleuse 30 % |
-| 🔥 Thermostat | consigne 21 °C, hystérésis ±0,5 °C ; nuit −2 °C, absent −4 °C ; **porte ouverte → chauffage coupé** |
-| 🌀 Ventilation | humidité > 70 % (arrêt sous 60 %), surchauffe, ou fuite de gaz |
-| 🪟 Volets | fermés la nuit et en absence ; mi-clos en plein soleil quand il fait trop chaud |
-| ⚠️ Gaz | ≥ 1000 ppm → sirène, ventilation forcée, chauffage coupé (priorité absolue) ; fin d'alerte sous 500 ppm |
-| 🚨 Alarme | `A` pour armer, 10 s pour sortir ; intrusion → 10 s pour taper le code ; sinon sirène et lampe qui clignote |
-| 🔐 Anti force brute | 3 codes faux → clavier bloqué 30 s |
-| 🎭 Simulation de présence | en mode absent, la lampe s'allume et s'éteint au hasard le soir |
-| ⚡ Énergie | puissance instantanée et consommation (lampe 12 W, chauffage 1500 W, ventilation 40 W) |
+| 💡 Lighting | dark (< 200 lux) + motion → 100 %; switches off 30 s after the last motion; night mode: 30 % night light |
+| 🔥 Thermostat | 21 °C setpoint, ±0.5 °C hysteresis; night −2 °C, away −4 °C; **door open → heating off** |
+| 🌀 Ventilation | humidity > 70 % (stops below 60 %), overheating, or gas leak |
+| 🪟 Blinds | closed at night and when away; half-closed in full sun when it is too warm |
+| ⚠️ Gas | ≥ 1000 ppm → siren, forced ventilation, heating off (top priority); alert clears below 500 ppm |
+| 🚨 Alarm | `A` to arm, 10 s to leave; intrusion → 10 s to enter the code; otherwise siren and flashing lamp |
+| 🔐 Brute-force protection | 3 wrong codes → keypad locked for 30 s |
+| 🎭 Presence simulation | in away mode, the lamp randomly turns on and off in the evening |
+| ⚡ Energy | instantaneous power and consumption (lamp 12 W, heater 1500 W, fan 40 W) |
 
-**Priorités :** sécurité gaz > alarme > confort > économie.
+**Priorities:** gas safety > alarm > comfort > energy saving.
 
 ## Architecture
 
 ```
-Capteurs ──► taskSensors (10 Hz) ─┐
-Clavier  ──► taskKeypad  (50 Hz) ─┼─► taskLogic (10 Hz) : home.c ──► lampe PWM, relais, servo, sirène
+Sensors  ──► taskSensors (10 Hz) ─┐
+Keypad   ──► taskKeypad  (50 Hz) ─┼─► taskLogic (10 Hz) : home.c ──► PWM lamp, relay, servo, siren
                                   │                         │
-Page web / série ◄── loop() ──────┘           taskDisplay ──► OLED
+Web page / serial ◄── loop() ─────┘           taskDisplay ──► OLED
 ```
 
-| Fichier | Rôle |
+| File | Role |
 |---|---|
-| `src/home.c` | toutes les règles (C portable, sans dépendance au matériel) |
-| `src/main.cpp` | tâches FreeRTOS, capteurs, clavier matriciel, PWM (lampe, servo, sirène), serveur web |
-| `src/web_page.h` | page web embarquée dans le firmware |
-| `test/test_home.c` | 24 tests : éclairage, thermostat, gaz, alarme, force brute, présence, volets, énergie |
+| `src/home.c` | all the rules (portable C, no hardware dependency) |
+| `src/main.cpp` | FreeRTOS tasks, sensors, matrix keypad, PWM (lamp, servo, siren), web server |
+| `src/web_page.h` | web page embedded in the firmware |
+| `test/test_home.c` | 24 tests: lighting, thermostat, gas, alarm, brute force, presence, blinds, energy |
 
-## Lancer la démo (Wokwi dans VS Code)
+## Running the demo (Wokwi in VS Code)
 
-1. Ouvre ce dossier dans VS Code → PlatformIO **Build** → **F1 › Wokwi: Start Simulator**.
-2. Ouvre **http://localhost:8180** dans ton navigateur : la page de la maison (mise à jour chaque seconde).
-3. Essaie :
-   - capteur de **luminosité** au minimum, puis clic sur le **PIR** : la lampe s'allume, puis s'éteint 30 s après ;
-   - **DHT22** à 18 °C : le relais du chauffage colle ; ouvre la **porte** (interrupteur) : il se coupe ;
-   - **glissière gaz** à fond : alerte, sirène, ventilation, bandeau rouge sur la page web ;
-   - clavier : `A` arme l'alarme, attends 10 s, ouvre la porte, puis tape `1234#` avant 10 s.
-     Tape trois codes faux pour voir le blocage du clavier.
+1. Open this folder in VS Code → PlatformIO **Build** → **F1 › Wokwi: Start Simulator**.
+2. Open **http://localhost:8180** in your browser: the home dashboard (refreshed every second).
+3. Try it:
+   - set the **light sensor** to its minimum, then click the **PIR**: the lamp turns on, then off 30 s later;
+   - **DHT22** at 18 °C: the heating relay clicks on; open the **door** (switch): it turns off;
+   - **gas slider** all the way up: alert, siren, ventilation, red banner on the web page;
+   - keypad: `A` arms the alarm, wait 10 s, open the door, then type `1234#` within 10 s.
+     Type three wrong codes to see the keypad lockout.
 
-Commandes dans le moniteur série : `mode away`, `mode night`, `light on`, `light auto`, `sp 1`, `arm`, `disarm 1234`.
+Serial monitor commands: `mode away`, `mode night`, `light on`, `light auto`, `sp 1`, `arm`, `disarm 1234`.
 
-> Si la redirection de port ne fonctionne pas dans ta version de Wokwi, la maison marche quand même :
-> écran OLED, clavier et commandes série.
+> If port forwarding does not work in your Wokwi version, the home still works:
+> OLED display, keypad and serial commands.
 
 ## Tests
 
@@ -63,6 +63,6 @@ Commandes dans le moniteur série : `mode away`, `mode night`, `light on`, `ligh
 gcc -O2 -Wall -Wextra -Isrc -o t test/test_home.c src/home.c && ./t
 ```
 
-## Licence
+## License
 
-© 2026 Yacine — tous droits réservés. Code publié pour consultation uniquement (voir [`LICENSE`](LICENSE)).
+© 2026 Yacine — all rights reserved. Code published for viewing only (see [`LICENSE`](LICENSE)).

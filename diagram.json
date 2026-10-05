@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "author": "Maison connectee",
+  "author": "Smart home",
   "editor": "wokwi",
   "parts": [
     { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
@@ -11,8 +11,8 @@
     { "type": "wokwi-slide-potentiometer", "id": "gas1", "top": 340, "left": -260, "attrs": { "travelLength": "30", "value": "0" } },
     { "type": "wokwi-slide-switch", "id": "door1", "top": 190, "left": -150, "attrs": { "value": "0" } },
     { "type": "wokwi-membrane-keypad", "id": "keypad1", "top": -60, "left": 420, "attrs": {} },
-    { "type": "wokwi-led", "id": "led_lamp", "top": 250, "left": 40, "attrs": { "color": "white", "label": "Lampe" } },
-    { "type": "wokwi-led", "id": "led_fan", "top": 250, "left": 100, "attrs": { "color": "blue", "label": "Ventil" } },
+    { "type": "wokwi-led", "id": "led_lamp", "top": 250, "left": 40, "attrs": { "color": "white", "label": "Lamp" } },
+    { "type": "wokwi-led", "id": "led_fan", "top": 250, "left": 100, "attrs": { "color": "blue", "label": "Fan" } },
     { "type": "wokwi-resistor", "id": "r1", "top": 320, "left": 30, "rotate": 90, "attrs": { "value": "220" } },
     { "type": "wokwi-resistor", "id": "r2", "top": 320, "left": 90, "rotate": 90, "attrs": { "value": "220" } },
     { "type": "wokwi-relay-module", "id": "relay1", "top": 240, "left": 180, "attrs": {} },

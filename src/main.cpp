@@ -1,23 +1,23 @@
 /*
  * ============================================================================
- *  Maison connectée — ESP32 + FreeRTOS (simulée sur Wokwi)
+ *  Smart home — ESP32 + FreeRTOS (simulated on Wokwi)
  * ============================================================================
- *  Capteurs : PIR (présence), photorésistance (luminosité), DHT22 (température,
- *             humidité), potentiomètre à glissière (simule un capteur de gaz MQ-2),
- *             interrupteur (porte), clavier 4x4 (alarme)
- *  Sorties  : lampe dimmable (PWM), relais du chauffage, ventilation (LED bleue),
- *             volets (servomoteur), sirène (buzzer), écran OLED
- *  Pilotage : page web servie PAR L'ESP32 (http://localhost:8180 avec Wokwi)
- *             + commandes dans le moniteur série
+ *  Sensors  : PIR (presence), photoresistor (light level), DHT22 (temperature,
+ *             humidity), slide potentiometer (simulates an MQ-2 gas sensor),
+ *             switch (door), 4x4 keypad (alarm)
+ *  Outputs  : dimmable lamp (PWM), heating relay, ventilation (blue LED),
+ *             blinds (servo motor), siren (buzzer), OLED display
+ *  Control  : web page served BY THE ESP32 (http://localhost:8180 with Wokwi)
+ *             + commands in the serial monitor
  *
- *  Toutes les règles sont dans home.c (C portable, 24 tests sur PC).
+ *  All rules live in home.c (portable C, 24 tests on PC).
  *
- *  Tâches FreeRTOS :
- *    taskSensors  10 Hz   lecture des capteurs
- *    taskKeypad   50 Hz   balayage du clavier matriciel (anti-rebond)
- *    taskLogic    10 Hz   règles d'automatisme → actionneurs
- *    taskDisplay   4 Hz   écran OLED
- *    loop()               serveur web + commandes série
+ *  FreeRTOS tasks:
+ *    taskSensors  10 Hz   sensor reading
+ *    taskKeypad   50 Hz   matrix keypad scanning (debounced)
+ *    taskLogic    10 Hz   automation rules → actuators
+ *    taskDisplay   4 Hz   OLED display
+ *    loop()               web server + serial commands
  * ============================================================================
  */
 #include <Arduino.h>
@@ -31,7 +31,7 @@
 #include "home.h"
 #include "web_page.h"
 
-// --- Brochage ---------------------------------------------------------------
+// --- Pin map ----------------------------------------------------------------
 #define PIN_DHT     15
 #define PIN_PIR     35
 #define PIN_LDR     34
@@ -51,12 +51,12 @@ DHTesp dht;
 WebServer server(80);
 
 home_t home;
-home_inputs_t inputs;                     // mis à jour par taskSensors
+home_inputs_t inputs;                     // updated by taskSensors
 SemaphoreHandle_t homeMutex;
 QueueHandle_t keyQueue;
 
 // ---------------------------------------------------------------------------
-//  PWM : lampe (5 kHz), servo (50 Hz), sirène (2 kHz) sur 3 minuteries LEDC
+//  PWM: lamp (5 kHz), servo (50 Hz), siren (2 kHz) on 3 LEDC timers
 // ---------------------------------------------------------------------------
 static void pwmSetup(uint8_t pin, uint32_t freq, uint8_t bits, uint8_t ch) {
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -72,16 +72,16 @@ static void pwmOut(uint8_t pin, uint8_t ch, uint32_t duty) {
   (void)pin; ledcWrite(ch, duty);
 #endif
 }
-static void servoWrite(int deg) {                    // impulsion de 0,5 à 2,5 ms toutes les 20 ms
+static void servoWrite(int deg) {                    // 0.5 to 2.5 ms pulse every 20 ms
   uint32_t us = 500 + (uint32_t)deg * 2000 / 180;
   pwmOut(PIN_SERVO, 2, us * 65535 / 20000);
 }
 
 // ---------------------------------------------------------------------------
-//  Capteurs
+//  Sensors
 // ---------------------------------------------------------------------------
 static float readLux() {
-  // Formule de la photorésistance Wokwi (GAMMA 0,7, RL10 50 kΩ, pont de 10 kΩ... en 3,3 V)
+  // Wokwi photoresistor formula (GAMMA 0.7, RL10 50 kΩ, 10 kΩ divider... at 3.3 V)
   float v = analogRead(PIN_LDR) / 4095.0f * 3.3f;
   if (v >= 3.29f) v = 3.29f;
   if (v < 0.001f) return 100000;
@@ -93,7 +93,7 @@ void taskSensors(void *) {
   float temp = 21, hum = 50;
   uint32_t k = 0;
   for (;;) {
-    if (k++ % 20 == 0) {                             // le DHT22 se lit au plus toutes les 2 s
+    if (k++ % 20 == 0) {                             // the DHT22 can be read at most every 2 s
       TempAndHumidity th = dht.getTempAndHumidity();
       if (dht.getStatus() == DHTesp::ERROR_NONE) { temp = th.temperature; hum = th.humidity; }
     }
@@ -101,7 +101,7 @@ void taskSensors(void *) {
     in.motion = digitalRead(PIN_PIR);
     in.lux = readLux();
     in.temp_c = temp; in.hum_pct = hum;
-    in.gas_ppm = analogRead(PIN_GAS) / 4095.0f * 5000.0f;   // glissière : 0 à 5000 ppm
+    in.gas_ppm = analogRead(PIN_GAS) / 4095.0f * 5000.0f;   // slider: 0 to 5000 ppm
     in.door_open = digitalRead(PIN_DOOR);
     xSemaphoreTake(homeMutex, portMAX_DELAY);
     inputs = in;
@@ -111,7 +111,7 @@ void taskSensors(void *) {
 }
 
 // ---------------------------------------------------------------------------
-//  Clavier matriciel 4x4 : on met une ligne à 0 et on lit les colonnes
+//  4x4 matrix keypad: drive one row low and read the columns
 // ---------------------------------------------------------------------------
 void taskKeypad(void *) {
   char last = 0; int stable = 0;
@@ -123,14 +123,14 @@ void taskKeypad(void *) {
       for (int c = 0; c < 4; c++) if (digitalRead(COLS[c]) == LOW) now = KEYS[r][c];
       digitalWrite(ROWS[r], HIGH);
     }
-    if (now == last) { if (++stable == 2 && now) xQueueSend(keyQueue, &now, 0); }   // anti-rebond : 2 lectures
+    if (now == last) { if (++stable == 2 && now) xQueueSend(keyQueue, &now, 0); }   // debounce: 2 identical reads
     else { stable = 0; last = now; }
     vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
 
 // ---------------------------------------------------------------------------
-//  Règles d'automatisme → actionneurs
+//  Automation rules → actuators
 // ---------------------------------------------------------------------------
 void taskLogic(void *) {
   TickType_t lastWake = xTaskGetTickCount();
@@ -160,7 +160,7 @@ void taskLogic(void *) {
 }
 
 // ---------------------------------------------------------------------------
-//  Écran OLED
+//  OLED display
 // ---------------------------------------------------------------------------
 void taskDisplay(void *) {
   for (;;) {
@@ -168,15 +168,15 @@ void taskDisplay(void *) {
     home_t h = home; home_inputs_t in = inputs;
     xSemaphoreGive(homeMutex);
     oled.clearDisplay(); oled.setTextColor(SSD1306_WHITE); oled.setTextSize(1);
-    oled.setCursor(0, 0);  oled.printf("%-6s alarme:%s", home_mode_str(h.mode), home_alarm_str(h.alarm));
-    oled.setCursor(0, 12); oled.printf("%4.1fC %3.0f%%  cons %4.1f", in.temp_c, in.hum_pct, h.setpoint_c);
-    oled.setCursor(0, 22); oled.printf("lux %5.0f gaz %4.0fppm", in.lux, in.gas_ppm);
-    oled.setCursor(0, 32); oled.printf("L%3d%% C:%s V:%s P:%s", h.out.light_pct, h.out.heater ? "on" : "--", h.out.fan ? "on" : "--", h.out.blinds_deg ? "F" : "O");
+    oled.setCursor(0, 0);  oled.printf("%-6s alarm:%s", home_mode_str(h.mode), home_alarm_str(h.alarm));
+    oled.setCursor(0, 12); oled.printf("%4.1fC %3.0f%%  set %4.1f", in.temp_c, in.hum_pct, h.setpoint_c);
+    oled.setCursor(0, 22); oled.printf("lux %5.0f gas %4.0fppm", in.lux, in.gas_ppm);
+    oled.setCursor(0, 32); oled.printf("L%3d%% H:%s F:%s B:%s", h.out.light_pct, h.out.heater ? "on" : "--", h.out.fan ? "on" : "--", h.out.blinds_deg ? "C" : "O");
     oled.setCursor(0, 42); oled.printf("%5.0f W  %7.1f Wh", home_power_w(&h), h.energy_wh);
     oled.setCursor(0, 54);
-    if (h.gas_alarm) oled.print("!! FUITE DE GAZ !!");
+    if (h.gas_alarm) oled.print("!! GAS LEAK !!");
     else if (h.alarm == ALARM_TRIGGERED) oled.print("!! INTRUSION !!");
-    else if (h.lock_timer > 0) oled.printf("clavier bloque %2.0fs", h.lock_timer);
+    else if (h.lock_timer > 0) oled.printf("keypad locked %2.0fs", h.lock_timer);
     else if (h.alarm == ALARM_ENTRY) oled.printf("code: %-4.*s  %2.0fs", h.entry_len, "****", h.alarm_timer);
     else if (h.entry_len) oled.printf("code: %.*s", h.entry_len, "****");
     oled.display();
@@ -185,7 +185,7 @@ void taskDisplay(void *) {
 }
 
 // ---------------------------------------------------------------------------
-//  Commandes (page web et moniteur série)
+//  Commands (web page and serial monitor)
 // ---------------------------------------------------------------------------
 static String command(const String &c, const String &v) {
   String r = "ok";
@@ -193,9 +193,9 @@ static String command(const String &c, const String &v) {
   if (c == "mode") home_set_mode(&home, v == "away" ? MODE_AWAY : v == "night" ? MODE_NIGHT : MODE_HOME);
   else if (c == "light") home_set_light(&home, v == "on" ? 100 : v == "off" ? 0 : -1);
   else if (c == "sp") home.setpoint_c = constrain(home.setpoint_c + v.toFloat(), 10.0f, 28.0f);
-  else if (c == "arm") r = home_arm(&home) ? "ok" : "deja armee";
-  else if (c == "disarm") r = home_disarm(&home, v.c_str()) ? "ok" : "code refuse";
-  else r = "commande inconnue";
+  else if (c == "arm") r = home_arm(&home) ? "ok" : "already armed";
+  else if (c == "disarm") r = home_disarm(&home, v.c_str()) ? "ok" : "code rejected";
+  else r = "unknown command";
   xSemaphoreGive(homeMutex);
   return r;
 }
@@ -244,18 +244,18 @@ void setup() {
   xTaskCreatePinnedToCore(taskLogic,   "logic",   4096, nullptr, 4, nullptr, 1);
   xTaskCreatePinnedToCore(taskDisplay, "display", 4096, nullptr, 1, nullptr, 0);
 
-  Serial.println("\n=== Maison connectee ===");
-  Serial.println("Commandes : mode home|night|away, light on|off|auto, sp +1|-1, arm, disarm 1234");
-  Serial.print("Connexion Wi-Fi");
+  Serial.println("\n=== Smart home ===");
+  Serial.println("Commands: mode home|night|away, light on|off|auto, sp +1|-1, arm, disarm 1234");
+  Serial.print("Connecting to Wi-Fi");
   WiFi.begin("Wokwi-GUEST", "", 6);
   for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) { delay(250); Serial.print("."); }
-  Serial.println(WiFi.status() == WL_CONNECTED ? " OK" : " echec (la maison fonctionne quand meme, sans page web)");
+  Serial.println(WiFi.status() == WL_CONNECTED ? " OK" : " failed (the home still works, without the web page)");
 
   server.on("/", []() { server.send(200, "text/html; charset=utf-8", WEB_PAGE); });
   server.on("/api/state", sendState);
   server.on("/api/cmd", []() { server.send(200, "text/plain", command(server.arg("c"), server.arg("v"))); });
   server.begin();
-  Serial.println("Page web : http://localhost:8180 (redirection Wokwi vers le port 80 de l'ESP32)");
+  Serial.println("Web page: http://localhost:8180 (Wokwi forwards to port 80 of the ESP32)");
 }
 
 void loop() {
