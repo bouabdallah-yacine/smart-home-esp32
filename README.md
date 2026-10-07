@@ -1,6 +1,6 @@
 # 🏠 Smart home: local automation, alarm and gas safety (ESP32 + FreeRTOS)
 
-[![Tests](https://github.com/bouabdellah-yacine/smart-home-esp32/actions/workflows/ci.yml/badge.svg)](https://github.com/bouabdellah-yacine/smart-home-esp32/actions/workflows/ci.yml)
+[![Tests](https://github.com/bouabdallah-yacine/smart-home-esp32/actions/workflows/ci.yml/badge.svg)](https://github.com/bouabdallah-yacine/smart-home-esp32/actions/workflows/ci.yml)
 
 A home that thinks **on its own, without Internet**: it turns the light on when someone walks in
 the dark, heats just as much as needed, closes the blinds in bright sun, monitors gas and protects
